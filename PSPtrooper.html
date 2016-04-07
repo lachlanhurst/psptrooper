@@ -1,0 +1,579 @@
+<!--
+// PSP Trooper
+//----------------------------------------------------------------------
+// Very Simple arcade type shootem up sorta game. Some people may
+// notice a similiarity with an ancient Apple 2e game which was ported 
+// to the ipod a while ago!
+// Written by: locks (Lachlan Hurst) 21/11/2005
+// Distributed under a LGPL (http://www.gnu.org/copyleft/lesser.html)
+// Which basically means do whatever you want with the code!
+// But it would be appreciated if you left this comment intack and gave me
+// some credit.
+//
+// Supported Versions
+// -----------------------------
+// This game obviously requires a web browser on your PSP, it has been tested
+// on 2.50 and should work on a 2.00 version PSP.  Have no idea if any 1.5 
+// browser is supported.
+// The game was developed in mozilla firefox so works fine in it, but not so IE.
+//
+// Installation
+// -----------------------------
+// -Simply create a directory on your PSP's mem stick and copy all files into it.
+// -Start up the browser and point it to the PSPtrooper.html file.
+//
+// Example install
+// - Make directory "/GAME/PSPTROOPER" on memory stick.
+// - Copy "PSPtrooper.html", "man.PNG", "shot.PNG", "tip.PNG" and "base.PNG"
+//   into "/GAME/PSPTROOPER"
+// - Startup the PSP browser 
+// - Enter "file:/GAME/PSPTROOPER/PSPtrooper.html" into the address bar
+// - Page should load, press X to start
+//
+// Playing the game
+// -----------------------------
+// The cursor determines the firing angle, and clicking (pressing X) fires.
+// The aim is quite simple, stop the little falling guys from reaching the bottom
+// of the screen.
+// For game performance reasons the number of shots on-screen at any one time is 
+// limited to 12, so use them carefully.
+// The more kills, the harder it gets, first more guys, then the start falling faster
+// Its all pretty simple really.
+// Unfortunately it plays more like a strategy game than an arcade shooter, thanks
+// to the browser/Javascript combo! (Sony please give me a Java VM).
+// Have fun.
+//
+//
+// TODO (if i feel inspired, or maybe someone else?)
+// -Save high scores via cookies, with names
+// -Intro screen with (Start new game, view high scores, credits, that sota thing)
+// -Randomly selected backgounds for in-game play (not sure if this would slow it
+//  down more)
+// -Give the little dudes parachutes when falling
+// -Bit more variety in oponents (eg: plane flies across and drops bomb)
+// -Improve frame rate (any Idea's?)
+//
+// Thanks
+// ----------------------------------------------------
+// Sauce (http://window.terratron.com/psp/) - Provided inspiration and
+// helped me learn some basic javascript game techniques
+// 
+//
+//
+// Misc Dev Notes;
+// - Performance is what i would call poor, game is much more playable 
+//   on a modern PC. I really did try to get the most out of the PSP but
+//   the overheads of the browser seem to slow it down. Javascript was 
+//   really not cut out for this sort of action.
+// - To pull off a playable javascript arcade game i suggest
+//   - Minimise number of DHTML objects on the page
+//   - Move as little elements as possible
+//   - Make most things move either vertically or horizontally, as this cuts
+//     down on .left and .top calls to the CSS styles.
+// - Seems to be no performance difference in moving PNG's vs the CSS 
+//   objects around.
+// - Might try a space invaders clone next, if i can get layers working ok
+//   a reasonable frame rate could be achived (errr, maybe....)
+//
+//-->
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Shooter</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+
+<style type="text/css">
+
+#man0{position: absolute; top: -194px; left: 218px;}
+#man1{position: absolute; top: -194px; left: 218px;}
+#man2{position: absolute; top: -194px; left: 218px;}
+#man3{position: absolute; top: -194px; left: 218px;}
+#man4{position: absolute; top: -194px; left: 218px;}
+#man5{position: absolute; top: -194px; left: 218px;}
+#man6{position: absolute; top: -194px; left: 218px;}
+#man7{position: absolute; top: -194px; left: 218px;}
+
+#score{position: absolute; top: 0px; left: 380px; width: 99px;}
+
+#click{position: absolute; top: 160px; left: 27px; width: 400px; text-align: center; font-family: Tahoma; font-size: 10px;}
+
+#shooterTop {position: absolute; top: 252px; left: 225px;}
+
+#shooterTip0 {position: absolute; top: 250px; left: 239px;}
+#shooterTip1 {position: absolute; top: 248px; left: 239px;}
+#shooterTip2 {position: absolute; top: 246px; left: 239px;}
+#shooterTip3 {position: absolute; top: 244px; left: 239px;}
+
+#shot0{position: absolute; top: -194px;	left: 218px;}
+#shot1{position: absolute; top: -194px; left: 218px;}
+#shot2{position: absolute; top: -194px; left: 218px;}
+#shot3{position: absolute; top: -194px;	left: 218px;}
+#shot4{position: absolute; top: -194px;	left: 218px;}
+#shot5{position: absolute; top: -194px;	left: 218px;}
+#shot6{position: absolute; top: -194px;	left: 218px;}
+#shot7{position: absolute; top: -194px;	left: 218px;}
+#shot8{position: absolute; top: -194px;	left: 218px;}
+#shot9{position: absolute; top: -194px;	left: 218px;}
+#shot10{position: absolute;top: -194px;	left: 218px;}
+#shot11{position: absolute;top: -194px;	left: 218px;}
+#shot12{position: absolute;top: -194px;	left: 218px;}
+
+</style>
+
+<script type="text/javascript">
+
+//Class defintions
+//Shot (fired red dots) object to store GUI object, visibility state and a few other
+//things to speed up processing.
+function Shot(trajAngle,posX,posY)
+{
+   this.x = posX;
+   this.y = posY;
+   this.Lastx = posX;
+   this.Lasty = posY;
+   this.sin = 0.0;
+   this.cos = 0.0;
+   this.visible = false;
+   this.visObject;
+}
+
+//Represents the moving tip of the cannon
+function Tip(posX,posY,visOb)
+{
+   this.x = posX;
+   this.y = posY;
+   this.Lastx = posX;
+   this.Lasty = posY;
+   this.visObject = visOb;
+}
+
+// the little guys falling from the sky
+function Man(manIndex,posX,posY)
+{
+   this.index = manIndex;
+   this.x = posX;
+   this.y = posY;
+   this.falling = true;
+   this.walking = false;
+   this.visible = false;
+   this.visObject;
+}
+
+// how many screen units each shot moves per screen refresh
+var shotSpeed = 4;
+
+//initialization position
+var nozzleTipPosX = 240;
+var nozzleTipPosY = 252;
+
+//reduces computational load if calc'd sin and cos vars are stored
+var sinVar = 0.0;
+var cosVar = 0.0;
+
+//reference to tips
+var tips = new Array();
+
+
+var shots = new Array();
+var numberOfShots = 12;
+
+var men = new Array();
+var numberOfActiveMen = 2;
+var numberOfActiveMenCurrent = 0;
+var numberOfMen = 7;
+var manFallSpeed = 1.0;
+
+var gameOver = false;
+var score = 0;
+var lastScore = 0;
+var kills = 0;
+
+//Initialize the game
+function init() 
+{
+        gameOver = false;
+        score = 0;
+        kills = 0;
+        document.getElementById("click").style.top = -100 + "px";
+        makeTip();
+        makeShots();    
+        makeMen();
+	
+	document.onmouseup = shoot;
+	document.onmousemove = movePaddle;
+	
+	setInterval("process()", 40);
+        
+}
+
+//initialises tip components
+function makeTip()
+{
+    //faster refresh by storing reference to the appropriate "shooterTip"
+    // instead of continually calling getElementByID
+    tips[0] = new Tip(239,250,document.getElementById("shooterTip0").style);
+    tips[1] = new Tip(239,248,document.getElementById("shooterTip1").style);
+    tips[2] = new Tip(239,246,document.getElementById("shooterTip2").style);
+    tips[3] = new Tip(239,244,document.getElementById("shooterTip3").style);
+}
+
+function makeShots()
+{
+    for (i=0;i<numberOfShots+1;i++)
+    {
+        shots[i] = new Shot(0,0,0);
+        shots[i].visObject = document.getElementById("shot" + i).style;
+    }
+}
+
+function makeMen()
+{
+    for (i=0;i<numberOfMen;i++)
+    {
+        men[i] = new Man(i,0,0);
+        men[i].visObject = document.getElementById("man" + i).style;
+    }
+}
+
+//shoot a new bullet
+function shoot(e) 
+{
+    for (i=0;i<shots.length;i++)
+    {
+        if (shots[i].visible)
+        {
+        }
+        else
+        {
+            var aShot = shots[i];
+            aShot.x = nozzleTipPosX;
+            aShot.y = nozzleTipPosY;
+            aShot.sin = sinVar * shotSpeed;
+            aShot.cos = cosVar * shotSpeed;
+            aShot.visible = true;
+            break;
+        }        
+
+
+    }
+
+}
+
+//The render/refresh loop, best performance was found when
+//all movement was conducted in a single thread as initiated
+//by the setInterval("process()", 40) call in the init method
+function process() 
+{
+
+   updateTips();
+   updateShotPositions();
+   updateMen();
+   updateContacts();
+   updateScore();
+
+   if (gameOver)
+   {
+       alert(" Game over! \n Score: "+Math.round(score)+" \n Refresh to start a new game.");
+
+       for (i=0;i<men.length;i++)
+       {
+          men[i].visible = false;
+          men[i].visObject.top = -100 + "px";
+
+       }
+       for (i=0;i<shots.length;i++)
+       {
+          shots[i].visible = false;
+          shots[i].visObject.top = -100 + "px";
+       }
+
+
+       init();
+   }
+   
+}
+
+function updateScore()
+{
+    if (score != lastScore)
+    {
+        lastScore = score;
+        document.getElementById("score").innerHTML = score;
+
+    }
+
+
+}
+
+
+function updateTips()
+{
+   for (i=0;i<4;i++)
+   {
+       var tip = tips[i];
+
+       //Minimise calls to .style.top and .style.left
+       //as each one is believed to cause a full refresh
+       if (tip.Lastx != tip.x)
+       {
+          tip.visObject.left = tip.x + "px";
+          tip.Lastx = tip.x;
+       }
+
+       if (tip.Lasty != tip.y)
+       {
+          tip.visObject.top = tip.y + "px";
+          tip.Lasty = tip.y;
+       }
+   }
+
+}
+
+//Contact detection algorithm, although an O(n^2) algorithm, 
+//it takes a very short amount of tiem to process due to low number
+// of shots and falling men.
+function updateContacts()
+{
+    for (i=0;i<men.length;i++)
+    {
+        if (men[i].visible)
+        {
+           var aMan = men[i];
+           for (j=0;j<shots.length;j++)
+           {
+              if (shots[j].visible)
+              {
+                  var aShot = shots[j];
+                  if (aShot.x > aMan.x && aShot.x < (aMan.x + 6) &&
+                      aShot.y > aMan.y && aShot.y < (aMan.y + 10))
+                  {
+                      this.numberOfActiveMenCurrent = this.numberOfActiveMenCurrent -1;
+                      aMan.visObject.top = -100 + "px";
+                      aMan.visible = false;
+                      aMan.falling = true;
+
+                      aShot.visible = false;
+                      aShot.visObject.top = -100 + "px";
+
+                      //score calculated from distance to top of screen
+                      //earlier you shoot the guys, the more points you get
+                      score = Math.round(score + (272 - aShot.y));
+
+                      //The level of the game is determined based on number of kills
+                      kills++;
+                      if (kills > 5)
+                      {
+                          this.numberOfActiveMen = 4;
+                      }
+                      else if (kills > 10)
+                      {
+                          this.numberOfActiveMen = 7;
+                      }
+                      else if (kills > 13)
+                      {
+                          this.manFallSpeed = 1.5;
+                      }
+                      else if (kills > 17)
+                      {
+                          this.manFallSpeed = 2.5;
+                      }
+                      else if (kills > 28)
+                      {
+                          this.manFallSpeed = shotSpeed;
+                      }
+                  }
+
+
+              }
+           }
+
+
+        }
+    }
+
+}
+
+
+function updateMen()
+{
+    
+        //block controls creation of new men
+        for (i=0;i<men.length;i++)
+        {
+            if(men[i].visible)
+            {}
+            else
+            {
+                if (this.numberOfActiveMenCurrent < this.numberOfActiveMen)
+                {
+                var aMan = men[i];
+                this.numberOfActiveMenCurrent = this.numberOfActiveMenCurrent + 1;
+                aMan.y = 0;
+                aMan.x = Math.random()*400;
+                
+                aMan.visible = true;
+                aMan.falling = true;
+                aMan.walking = false;
+                aMan.visObject.left = aMan.x + "px";
+                break;
+                }
+            }
+        }
+
+
+    //block updates position of existing men
+    for (i=0;i<men.length;i++)
+    {
+        if (men[i].visible)
+        {
+            var aMan = men[i];
+            //If man hits the ground....
+            if (aMan.y > 257)
+            {
+               if (aMan.falling)
+                  this.numberOfActiveMenCurrent = this.numberOfActiveMenCurrent -1;
+               aMan.falling = false;
+               aMan.running = true;
+            }
+
+
+            if (aMan.falling)
+            {
+               aMan.y = aMan.y + manFallSpeed;
+               aMan.visObject.top = aMan.y  + "px";
+            }
+            else 
+            {
+               if ( aMan.x < 218)
+                   aMan.x = aMan.x + manFallSpeed;
+               if ( aMan.x > 218 && aMan.x < 256)
+               {
+                   
+                   gameOver = true;
+               }
+               if (aMan.x > 256)
+                   aMan.x = aMan.x - manFallSpeed;
+               aMan.visObject.left = aMan.x + "px";
+            }
+
+            
+            
+
+        }
+    }
+
+}
+
+
+function updateShotPositions()
+{
+    for (i=0;i<shots.length;i++)
+    {
+        if (shots[i].visible)
+        {
+            var aShot = shots[i];
+            aShot.x = aShot.x + aShot.sin;
+            aShot.y = aShot.y - aShot.cos;
+
+            var roundX = Math.round(aShot.x);
+            var roundY = Math.round(aShot.y);
+
+            if (roundX != aShot.Lastx)
+            {
+               aShot.visObject.left = roundX + "px";
+               aShot.Lastx = roundX;
+            }
+
+            if (roundY != aShot.Lasty)
+            {
+               aShot.visObject.top = roundY  + "px";
+               aShot.Lasty = roundY;
+            }
+
+            aShot.visObject.top = Math.round(aShot.y)  + "px";
+            if (aShot.x < 0 || aShot.x > 480 || aShot.y < 0 || aShot.y > 272)
+            {
+                aShot.visible = false;
+                aShot.visObject.top = -100 + "px"
+            }
+
+
+        }
+    }
+}
+
+//captures mouse move event
+//sets position of tips but does not move the html elements (thats done in process)
+function movePaddle(e) 
+{
+	e = (e)?e:event;
+	
+        var deltaX = e.clientX - 240;
+        var deltaY = 252- e.clientY;
+        if (deltaY < 0)
+            deltaY = 0;
+
+        var length = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+
+        var cosAngle = deltaY/length;
+        var sinAngle = deltaX/length;
+
+
+        tips[1].x = 239 + sinAngle * 4;
+        tips[1].y = 252 - cosAngle * 4;
+
+        tips[2].x = 239 + sinAngle * 6;
+        tips[2].y = 252 - cosAngle * 6;
+
+        tips[3].x = 239 + sinAngle * 8;
+        tips[3].y = 252 - cosAngle * 8;
+
+        sinVar = sinAngle;
+        cosVar = cosAngle;
+}
+
+document.onmouseup = init;
+</script>
+
+</head>
+
+	
+   <div id="shooterTop"> <IMG SRC="base.PNG"></IMG></div>
+   <div id="shooterTip0"> <IMG SRC="tip.PNG"></IMG></div>
+   <div id="shooterTip1"> <IMG SRC="tip.PNG"></IMG></div>
+   <div id="shooterTip2"> <IMG SRC="tip.PNG"></IMG></div>
+   <div id="shooterTip3"> <IMG SRC="tip.PNG"></IMG></div>
+
+   <div id="click">Click to start</div>
+
+   <div id="shot0"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot1"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot2"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot3"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot4"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot5"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot6"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot7"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot8"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot9"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot10"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot11"> <IMG SRC="shot.PNG"></IMG></div>
+   <div id="shot12"> <IMG SRC="shot.PNG"></IMG></div>
+   
+   <div id="man0"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man1"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man2"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man3"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man4"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man5"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man6"> <IMG SRC="man.PNG"></IMG></div>
+   <div id="man7"> <IMG SRC="man.PNG"></IMG></div>
+
+   <div id="score">0</div>
+
+</body>
+</html>
+
+
+
